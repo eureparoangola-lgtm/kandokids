@@ -285,5 +285,53 @@ do $$ begin
 end $$;
 reset role;
 
+-- -----------------------------------------------------------------------------
+\echo '14. API da app: painel do encarregado, viagens do assistente, ausência tardia'
+select set_config('request.jwt.claim.sub', :'joana', false); set role authenticated;
+do $$ declare d jsonb; ana jsonb; begin
+  d := public.get_guardian_dashboard();
+  assert jsonb_array_length(d) = 2, 'Joana tem 2 filhos';
+  select x into ana from jsonb_array_elements(d) x where x ->> 'first_name' = 'Ana';
+  assert (ana ->> 'has_pin')::boolean, 'Ana tem PIN';
+  assert (ana -> 'features' ->> 'sms_alerts')::boolean, 'Joana tem extra SMS';
+  assert not (ana -> 'features' ->> 'speeding_alerts')::boolean, 'Joana não tem alertas de velocidade';
+  assert jsonb_array_length(ana -> 'trips') = 2, 'Ana tem 2 viagens hoje';
+  assert exists (select 1 from jsonb_array_elements(ana -> 'trips') t where t ->> 'status' = 'delivered' and t -> 'vehicle' ->> 'plate' = 'LD-23-45-AB');
+  perform public._ok('Painel da Joana: 2 filhos, viagens de hoje, PIN e extras corretos');
+  assert public.get_trip_live('66666666-0000-0000-0000-000000000002') is null, 'Joana não vê a viatura da Rita';
+  perform public._ok('Joana não consegue ver a localização de uma viatura sem filhos dela');
+end $$;
+reset role;
+
+select set_config('request.jwt.claim.sub', :'esperanca', false); set role authenticated;
+do $$ declare trips jsonb; m jsonb; begin
+  trips := public.get_crew_trips();
+  assert jsonb_array_length(trips) = 1 and trips -> 0 -> 'vehicle' ->> 'plate' = 'LD-67-89-CD', 'Esperança só vê a sua viatura';
+  m := public.get_trip_manifest('66666666-0000-0000-0000-000000000002');
+  assert jsonb_array_length(m -> 'students') = 2, 'Kiame + Rita (transferida)';
+  assert (m -> 'features' ->> 'pickup_pin')::boolean;
+  perform public._expect_error($q$select public.get_trip_manifest('00000000-0000-0000-0000-000000000000')$q$, '%Sem permissão%');
+  perform public._ok('Esperança vê só a sua viagem e a lista com a Rita transferida');
+end $$;
+reset role;
+
+-- Paulo marca que o Kiame não vai, com a viagem já em curso
+select set_config('request.jwt.claim.sub', :'paulo', false); set role authenticated;
+insert into public.absences (student_id, service_date, reason, created_by)
+values ('44444444-0000-0000-0000-000000000004', public.luanda_today(), 'Doente', auth.uid());
+reset role;
+do $$ begin
+  assert (select status from public.trip_students where id = public._ts('66666666-0000-0000-0000-000000000002', '44444444-0000-0000-0000-000000000004')) = 'absent';
+  assert exists (select 1 from public.notifications where recipient_id = '00000000-0000-0000-0000-0000000000a4' and type = 'student_absent');
+  perform public._ok('Ausência tardia: Kiame saiu da lista e a assistente foi avisada');
+end $$;
+select set_config('request.jwt.claim.sub', :'paulo', false); set role authenticated;
+delete from public.absences where student_id = '44444444-0000-0000-0000-000000000004';
+reset role;
+do $$ begin
+  assert (select status from public.trip_students where id = public._ts('66666666-0000-0000-0000-000000000002', '44444444-0000-0000-0000-000000000004')) = 'expected';
+  perform public._ok('Ausência anulada: Kiame volta à lista');
+end $$;
+
 \echo ''
 \echo 'Todos os testes passaram ✔'

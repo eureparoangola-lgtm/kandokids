@@ -47,18 +47,37 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
+      - run: pnpm --filter @kandokids/web --filter @kandokids/shared typecheck
       - name: Build
         run: pnpm --filter @kandokids/web build
         env:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           NEXT_PUBLIC_SUPABASE_ANON_KEY: build-placeholder
 
+  mobile:
+    name: Mobile (typecheck + web export)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @kandokids/mobile typecheck
+      - name: Export web build
+        run: pnpm --filter @kandokids/mobile build:web
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: build-placeholder
+
   e2e:
-    name: End-to-end (dashboard in a real browser)
+    name: End-to-end (dashboard and app in a real browser)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [database, web]
+    needs: [database, web, mobile]
     services:
       postgres:
         image: postgres:17
@@ -84,7 +103,16 @@ jobs:
 
       - run: pnpm --filter @kandokids/web build
       - run: pnpm --filter @kandokids/web exec playwright install --with-deps chromium
-      - run: pnpm --filter @kandokids/web test:e2e
+      - name: Dashboard tests
+        run: pnpm --filter @kandokids/web test:e2e
+
+      - name: Reset data and build the app for the web
+        run: |
+          ANON=$(./scripts/test-stack/up.sh | tail -1)
+          printf "EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321\nEXPO_PUBLIC_SUPABASE_ANON_KEY=%s\n" "$ANON" > apps/mobile/.env.local
+          pnpm --filter @kandokids/mobile build:web
+      - name: App tests (parent + assistant)
+        run: pnpm --filter @kandokids/mobile test:e2e
 
       - name: Stack logs
         if: failure()
@@ -94,6 +122,8 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report
-          path: apps/web/playwright-report
+          name: playwright-reports
+          path: |
+            apps/web/playwright-report
+            apps/mobile/playwright-report
           retention-days: 7

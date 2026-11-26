@@ -10,10 +10,35 @@ The app interface is in Portuguese (pt-AO).
 
 ```
 apps/web          Admin dashboard (Next.js 16): features, paid extras, today's trips
-apps/mobile       (next) Parent and vehicle-assistant app (Expo / React Native)
+apps/mobile       Parent and vehicle-assistant app (Expo / React Native: Android, iOS and web)
 packages/shared   Types and Portuguese labels shared by web and mobile
 supabase/         Database: migrations, demo data (seed.sql) and scenario tests
 ```
+
+## Mobile app (`apps/mobile`)
+
+One app, two roles. The screens shown depend on who logs in:
+
+| Parent (encarregado) | Vehicle assistant (assistente) |
+|---|---|
+| Children list: which vehicle each child is in right now | Today's trips with child counts |
+| Live map of the vehicle (only while their child is waiting or on board) | Start the trip; GPS is sent automatically every ~10 s |
+| Timeline: trip started, picked up, arrived at school or home | Check children in with one tap or by scanning their **QR card** (a child from another vehicle is refused, and the scan says which vehicle is right) |
+| "Going today / tomorrow" switches | Hand-over with **PIN** or **authorized adult** |
+| Chat with the vehicle, with quick replies | "No-show", **notify parents** (delay, breakdown…), **SOS** |
+| Set the pickup PIN | End the trip with the **empty-vehicle check** |
+| Notifications, paid extras, sign-up with an invite code | Parents' messages |
+
+The same code runs in the browser (`pnpm --filter @kandokids/mobile web`), which also serves parents on the web.
+On the web, the map uses OpenStreetMap (Leaflet); on phones it uses the native map.
+
+```bash
+cp apps/mobile/.env.example apps/mobile/.env.local   # Supabase URL and anon key
+pnpm --filter @kandokids/mobile start                # QR code for Expo Go / dev build
+```
+
+> The app uses native modules (camera, location, maps). Install it on a phone with an EAS development build:
+> `npx eas-cli@latest build --profile development`. A Google Maps API key is needed for the Android map.
 
 ## Feature switches
 
@@ -65,13 +90,14 @@ Demo users (password `kandokids123`): `admin@kianda.ao` (admin), `teresa@kianda.
 
 ## Tests
 
-GitHub Actions (`.github/workflows/ci.yml`) runs three jobs on every push to `main` and on every pull request:
+GitHub Actions (`.github/workflows/ci.yml`) runs four jobs on every push to `main` and on every pull request:
 
 | Job | What it checks |
 |---|---|
 | **Database** | Applies all migrations and the demo data on Postgres, then runs the 13 scenarios in `supabase/tests/scenarios.sql` (permissions, PIN, empty vehicle, transfers, speeding, SMS only for paying parents…) |
 | **Web** | TypeScript type checking and production build of the dashboard |
-| **End-to-end** | Starts Postgres + GoTrue (login) + PostgREST (API), builds the dashboard and uses a real browser (Playwright) to log in, switch features, set prices and confirm a parent's payment |
+| **Mobile** | Type checking and web export of the app |
+| **End-to-end** | Starts Postgres + GoTrue (login) + PostgREST (API). A real browser (Playwright) tests the dashboard (features, prices, payments), then the app: a full morning trip with the assistant and a parent at the same time (GPS, live map, QR scan, absence, chat, empty-vehicle check, notifications) and a paid-extra request |
 
 Running them locally (needs a Postgres you can reach with `psql`, plus Docker for the end-to-end tests):
 
