@@ -6,7 +6,10 @@
     "dev:web": "pnpm --filter @kandokids/web dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "db:test": "./supabase/tests/run.sh"
+    "db:test": "./supabase/tests/run.sh",
+    "test:e2e": "pnpm --filter @kandokids/web test:e2e",
+    "stack:up": "./scripts/test-stack/up.sh",
+    "stack:down": "./scripts/test-stack/down.sh"
   },
   "devDependencies": {
     "supabase": "3.4.0"

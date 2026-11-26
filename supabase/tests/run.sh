@@ -4,8 +4,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 DB=kandokids_test
-psql -U postgres -qX -c "drop database if exists $DB" -c "create database $DB" >/dev/null
-P="psql -U postgres -d $DB -qX -v ON_ERROR_STOP=1"
+psql -U ${PGUSER:-postgres} -qX -c "drop database if exists $DB with (force)" -c "create database $DB" >/dev/null
+P="psql -U ${PGUSER:-postgres} -d $DB -qX -v ON_ERROR_STOP=1"
 $P -f tests/_supabase_stub.sql >/dev/null
 for f in migrations/*.sql; do echo "→ $f"; $P -f "$f" >/dev/null; done
 echo "→ seed.sql"; $P -f seed.sql >/dev/null

@@ -30,7 +30,9 @@ export async function updateSession(request: NextRequest) {
     url.searchParams.set("next", path);
     return NextResponse.redirect(url);
   }
-  if (signedIn && path === "/login") {
+  // Com ?erro= (ex.: encarregado sem acesso ao painel) mostramos a mensagem em vez de redirecionar,
+  // senão haveria um ciclo /painel → /login → /painel.
+  if (signedIn && path === "/login" && !request.nextUrl.searchParams.has("erro")) {
     const url = request.nextUrl.clone();
     url.pathname = "/painel";
     url.search = "";

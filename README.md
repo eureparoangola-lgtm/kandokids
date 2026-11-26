@@ -63,10 +63,27 @@ pnpm dev:web                      # http://localhost:3000
 Demo users (password `kandokids123`): `admin@kianda.ao` (admin), `teresa@kianda.ao`
 (assistant), `joana@exemplo.ao` and `paulo@exemplo.ao` (parents).
 
-### Database tests
+## Tests
 
-The tests run against a plain PostgreSQL 16 (with a minimal Supabase stand-in):
+GitHub Actions (`.github/workflows/ci.yml`) runs three jobs on every push to `main` and on every pull request:
+
+| Job | What it checks |
+|---|---|
+| **Database** | Applies all migrations and the demo data on Postgres, then runs the 13 scenarios in `supabase/tests/scenarios.sql` (permissions, PIN, empty vehicle, transfers, speeding, SMS only for paying parents…) |
+| **Web** | TypeScript type checking and production build of the dashboard |
+| **End-to-end** | Starts Postgres + GoTrue (login) + PostgREST (API), builds the dashboard and uses a real browser (Playwright) to log in, switch features, set prices and confirm a parent's payment |
+
+Running them locally (needs a Postgres you can reach with `psql`, plus Docker for the end-to-end tests):
 
 ```bash
-PGHOST=/path/to/socket PGPORT=5432 pnpm db:test
+# Database scenarios
+PGHOST=localhost PGPORT=5432 PGUSER=postgres pnpm db:test
+
+# End-to-end
+ANON=$(PGHOST=localhost PGPORT=5432 ./scripts/test-stack/up.sh apps/web/e2e/seed-e2e.sql | tail -1)
+printf "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321\nNEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON\n" > apps/web/.env.local
+pnpm --filter @kandokids/web build && pnpm test:e2e
+pnpm stack:down
 ```
+
+`up.sh` recreates the test database every time, so run it again before re-running the end-to-end tests.

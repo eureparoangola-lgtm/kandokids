@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PGUSER: postgres
+  PGPASSWORD: postgres
+  PGHOST: localhost
+  PGPORT: "5432"
+
+jobs:
+  database:
+    name: Database (migrations + scenario tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run scenario tests
+        run: ./supabase/tests/run.sh
+
+  web:
+    name: Web (typecheck + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - name: Build
+        run: pnpm --filter @kandokids/web build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: build-placeholder
+
+  e2e:
+    name: End-to-end (dashboard in a real browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [database, web]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Start auth + API stack
+        run: |
+          ANON=$(./scripts/test-stack/up.sh apps/web/e2e/seed-e2e.sql | tail -1)
+          printf "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321\nNEXT_PUBLIC_SUPABASE_ANON_KEY=%s\n" "$ANON" > apps/web/.env.local
+
+      - run: pnpm --filter @kandokids/web build
+      - run: pnpm --filter @kandokids/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @kandokids/web test:e2e
+
+      - name: Stack logs
+        if: failure()
+        run: |
+          docker logs kk-auth 2>&1 | tail -50
+          docker logs kk-rest 2>&1 | tail -50
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
