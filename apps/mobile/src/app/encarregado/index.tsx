@@ -31,7 +31,7 @@ export default function GuardianHome() {
       {error && <Banner>{error}</Banner>}
       {loading && !data && <Loading />}
       {data && data.length === 0 && (
-        <Card><Muted>Ainda não tem crianças associadas. Peça o código de convite à empresa de transporte.</Muted></Card>
+        <Card><Muted>Ainda não tem crianças associadas. Use o código de convite que a empresa de transporte lhe enviou.</Muted></Card>
       )}
 
       {data?.map((child) => {
@@ -61,6 +61,7 @@ export default function GuardianHome() {
 
       <SectionLabel>Conta</SectionLabel>
       <Button title="Extras (SMS, alertas…)" icon="⭐" variant="secondary" onPress={() => router.push("/encarregado/extras")} />
+      <Button title="Tenho um código de convite" icon="🔑" variant="secondary" onPress={() => router.push("/codigo")} />
       <Button title="Terminar sessão" variant="ghost" onPress={signOut} />
     </Screen>
   );

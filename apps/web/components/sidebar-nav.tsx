@@ -5,10 +5,13 @@ import { usePathname } from "next/navigation";
 
 const ITEMS = [
   { href: "/painel", label: "Início" },
+  { href: "/painel/alunos", label: "Alunos" },
+  { href: "/painel/viaturas", label: "Viaturas" },
+  { href: "/painel/rotas", label: "Rotas" },
+  { href: "/painel/equipa", label: "Equipa" },
   { href: "/painel/funcionalidades", label: "Funcionalidades" },
   { href: "/painel/extras", label: "Extras pagos" },
 ];
-const SOON = ["Viagens", "Viaturas", "Alunos", "Rotas", "Equipa"];
 
 export function SidebarNav({ pendingAddons }: { pendingAddons: number }) {
   const path = usePathname();
@@ -27,10 +30,6 @@ export function SidebarNav({ pendingAddons }: { pendingAddons: number }) {
           </Link>
         );
       })}
-      <p className="mt-6 hidden px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 lg:block">Em breve</p>
-      {SOON.map((label) => (
-        <span key={label} className="hidden px-3 py-2 text-sm text-slate-500 lg:block">{label}</span>
-      ))}
     </nav>
   );
 }

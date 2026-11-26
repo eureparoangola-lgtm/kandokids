@@ -8,11 +8,12 @@ import { signOut } from "../login/actions";
 export default async function PainelLayout({ children }: { children: React.ReactNode }) {
   const session = await requireManager();
   const supabase = await createClient();
-  const { count } = await supabase
-    .from("guardian_addons")
-    .select("id", { count: "exact", head: true })
-    .eq("company_id", session.companyId)
-    .eq("status", "pending_payment");
+  const [{ count }, { count: vehicles }, { count: students }] = await Promise.all([
+    supabase.from("guardian_addons").select("id", { count: "exact", head: true })
+      .eq("company_id", session.companyId).eq("status", "pending_payment"),
+    supabase.from("vehicles").select("id", { count: "exact", head: true }).eq("company_id", session.companyId).eq("active", true),
+    supabase.from("students").select("id", { count: "exact", head: true }).eq("company_id", session.companyId).eq("active", true),
+  ]);
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_1fr]">
@@ -30,7 +31,17 @@ export default async function PainelLayout({ children }: { children: React.React
           </form>
         </div>
       </aside>
-      <main className="mx-auto w-full max-w-5xl px-4 py-8 lg:px-10">{children}</main>
+      <main className="mx-auto w-full max-w-5xl px-4 py-8 lg:px-10">
+        {!session.plan.isPro && (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-400 bg-brand-50 px-4 py-3 text-sm text-ink-900">
+            <span>
+              <strong>Plano gratuito</strong> · {vehicles ?? 0}/{session.plan.maxVehicles} viatura · {students ?? 0}/{session.plan.maxStudents} alunos
+            </span>
+            <a href="/painel/plano" className="font-semibold underline underline-offset-4">Passar para o plano Pro</a>
+          </div>
+        )}
+        {children}
+      </main>
     </div>
   );
 }

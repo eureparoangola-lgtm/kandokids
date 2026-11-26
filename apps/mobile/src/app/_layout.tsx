@@ -26,6 +26,7 @@ function Navigator() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="registo" options={{ title: "Criar conta" }} />
+      <Stack.Screen name="codigo" options={{ title: "Código de convite" }} />
       <Stack.Screen name="encarregado/index" options={{ title: "Kandokids" }} />
       <Stack.Screen name="encarregado/aluno/[id]" options={{ title: "" }} />
       <Stack.Screen name="encarregado/pin/[id]" options={{ title: "PIN de entrega" }} />

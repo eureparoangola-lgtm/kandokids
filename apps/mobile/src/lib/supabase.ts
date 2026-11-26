@@ -3,10 +3,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import { AppState, Platform } from "react-native";
 
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
-const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
+import { SUPABASE_KEY, SUPABASE_URL } from "./config";
 
-export const supabase = createClient(url, anonKey, {
+export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     // No browser usamos o localStorage; no telemóvel, AsyncStorage.
     ...(Platform.OS !== "web" ? { storage: AsyncStorage } : {}),

@@ -32,7 +32,7 @@ export async function updateSession(request: NextRequest) {
   }
   // Com ?erro= (ex.: encarregado sem acesso ao painel) mostramos a mensagem em vez de redirecionar,
   // senão haveria um ciclo /painel → /login → /painel.
-  if (signedIn && path === "/login" && !request.nextUrl.searchParams.has("erro")) {
+  if (signedIn && (path === "/login" || path === "/registar") && !request.nextUrl.searchParams.has("erro")) {
     const url = request.nextUrl.clone();
     url.pathname = "/painel";
     url.search = "";

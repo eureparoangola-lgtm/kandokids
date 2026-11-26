@@ -26,9 +26,9 @@ select id, id, id::text, jsonb_build_object('sub', id::text, 'email', email), 'e
 from auth.users;
 
 -- Empresa ---------------------------------------------------------------------
-insert into public.companies (id, name, nif, phone, email, address, license_status, license_expires_at, monthly_paid_until)
+insert into public.companies (id, name, nif, phone, email, address, plan, license_status, license_expires_at, monthly_paid_until)
 values ('11111111-1111-1111-1111-111111111111', 'Kianda Transportes Escolares', '5417000000',
-        '+244923000000', 'geral@kianda.ao', 'Talatona, Luanda', 'active',
+        '+244923000000', 'geral@kianda.ao', 'Talatona, Luanda', 'pro', 'active',
         current_date + 300, current_date + 20);
 
 update public.profiles set role = 'platform_admin' where id = '00000000-0000-0000-0000-000000000001';
@@ -87,3 +87,9 @@ from (values ('66666666-0000-0000-0000-000000000001', '55555555-0000-0000-0000-0
              ('66666666-0000-0000-0000-000000000002', '55555555-0000-0000-0000-000000000003'),
              ('66666666-0000-0000-0000-000000000003', '55555555-0000-0000-0000-000000000002')) r(trip_id, route_id)
 join public.route_stops rs on rs.route_id = r.route_id::uuid;
+
+-- Convites de demonstração (códigos fixos para testar o registo na app)
+insert into public.guardian_invites (company_id, student_id, phone, relationship, code) values
+  ('11111111-1111-1111-1111-111111111111', '44444444-0000-0000-0000-000000000004', '+244931000009', 'Mãe', 'DEMOPAIS');
+insert into public.staff_invites (company_id, role, full_name, phone, code) values
+  ('11111111-1111-1111-1111-111111111111', 'assistant', 'Nova Assistente', '+244923000009', 'DEMOEQUI');

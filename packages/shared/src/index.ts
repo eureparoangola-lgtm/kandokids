@@ -123,3 +123,104 @@ export function formatKz(value: number | string | null | undefined): string {
   if (value === null || value === undefined || value === "") return "—";
   return kz.format(Number(value));
 }
+
+// ---------------------------------------------------------------------------
+// Convites por WhatsApp
+// ---------------------------------------------------------------------------
+
+/** Normaliza um número angolano para o formato internacional sem "+" (ex.: 244923000000). */
+export function normalizeAngolanPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("244")) return digits;
+  if (digits.length === 9 && digits.startsWith("9")) return `244${digits}`;
+  return digits;
+}
+
+/** Link que abre o WhatsApp com a mensagem já escrita. */
+export function whatsappLink(phone: string | null | undefined, text: string): string {
+  const to = phone ? normalizeAngolanPhone(phone) : "";
+  return `https://wa.me/${to}?text=${encodeURIComponent(text)}`;
+}
+
+export function guardianInviteMessage(opts: { company: string; student: string; code: string; guardianName?: string | null }): string {
+  const hello = opts.guardianName ? `Olá ${opts.guardianName.split(" ")[0]}!` : "Olá!";
+  return `${hello} A ${opts.company} usa a app Kandokids: vai poder ver em que viatura está ${opts.student}, acompanhar a viagem no mapa e falar com a viatura. Instale a app Kandokids, escolha "Tenho um código de convite" e use o código ${opts.code}.`;
+}
+
+export function staffInviteMessage(opts: { company: string; name: string; role: string; code: string }): string {
+  return `Olá ${opts.name.split(" ")[0]}! Foi adicionado(a) como ${opts.role.toLowerCase()} da ${opts.company} na Kandokids. Instale a app Kandokids, escolha "Tenho um código de convite" e use o código ${opts.code}.`;
+}
+
+// ---------------------------------------------------------------------------
+// Importação de alunos (Excel / CSV)
+// ---------------------------------------------------------------------------
+
+export interface StudentImportRow {
+  full_name: string;
+  grade?: string;
+  school_name?: string;
+  home_address?: string;
+  guardian_name?: string;
+  guardian_phone?: string;
+  relationship?: string;
+}
+
+const HEADER_ALIASES: Record<keyof StudentImportRow, string[]> = {
+  full_name: ["nome", "nome do aluno", "aluno", "nome completo", "crianca", "nome da crianca"],
+  grade: ["classe", "turma", "ano", "classe/turma"],
+  school_name: ["escola", "colegio", "nome da escola"],
+  home_address: ["morada", "endereco", "residencia", "bairro", "zona"],
+  guardian_name: ["encarregado", "nome do encarregado", "pai/mae", "responsavel", "encarregado de educacao"],
+  guardian_phone: ["telefone", "telemovel", "contacto", "telefone do encarregado", "numero", "whatsapp"],
+  relationship: ["parentesco", "relacao", "grau de parentesco"],
+};
+
+const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+
+/** Converte linhas de uma folha (1.ª linha = cabeçalhos) em alunos. Devolve também colunas reconhecidas. */
+export function parseStudentSheet(rows: unknown[][]): { students: StudentImportRow[]; recognized: string[]; missingName: boolean } {
+  const [header = [], ...body] = rows;
+  const map = new Map<number, keyof StudentImportRow>();
+  header.forEach((h, i) => {
+    const key = (Object.keys(HEADER_ALIASES) as (keyof StudentImportRow)[]).find((k) =>
+      HEADER_ALIASES[k].includes(normalize(String(h ?? ""))),
+    );
+    if (key && ![...map.values()].includes(key)) map.set(i, key);
+  });
+  const students = body
+    .map((row) => {
+      const s: Partial<StudentImportRow> = {};
+      map.forEach((key, i) => {
+        const v = row[i];
+        if (v !== null && v !== undefined && String(v).trim() !== "") s[key] = String(v).trim();
+      });
+      return s as StudentImportRow;
+    })
+    .filter((s) => s.full_name);
+  return { students, recognized: [...map.values()], missingName: ![...map.values()].includes("full_name") };
+}
+
+/** CSV simples (separador , ou ;) com aspas. */
+export function parseCsv(text: string): string[][] {
+  const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
+  const sep = (firstLine.match(/;/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0) ? ";" : ",";
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') quoted = false;
+      else cell += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === sep) { row.push(cell); cell = ""; }
+    else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && text[i + 1] === "\n") i++;
+      row.push(cell); rows.push(row); row = []; cell = "";
+    } else cell += ch;
+  }
+  if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter((r) => r.some((c) => c.trim() !== ""));
+}

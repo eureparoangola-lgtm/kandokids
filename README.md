@@ -40,6 +40,18 @@ pnpm --filter @kandokids/mobile start                # QR code for Expo Go / dev
 > The app uses native modules (camera, location, maps). Install it on a phone with an EAS development build:
 > `npx eas-cli@latest build --profile development`. A Google Maps API key is needed for the Android map.
 
+## Plans and onboarding
+
+- **Free plan, forever:** 1 vehicle and up to 15 students, all features, no ads. Paid extras for parents work on every plan.
+- **Pro plan:** unlimited vehicles and students (yearly licence or monthly fee). Companies request it from the dashboard (**Plano**), and Kandokids staff are notified.
+- **Self-service:** a company signs up at `/registar`, adds its vehicle, **imports students from Excel/CSV**
+  (columns are recognized by name: Nome, Classe, Escola, Morada, Encarregado, Telefone, Parentesco), invites its
+  assistants, creates a route, and **sends each parent a WhatsApp invite** with a code.
+- One invite code works for everyone: parents and staff enter it in the app ("Tenho um código de convite").
+- **Trips are created every day at 05:00 (Luanda)** from the routes (`generate_trips`, scheduled with `pg_cron`),
+  or on demand from the dashboard.
+- A child's home location is saved automatically on the first pickup with GPS, which enables proximity alerts.
+
 ## Feature switches
 
 Every feature has a per-company mode, set in the dashboard under **Funcionalidades**:

@@ -11,6 +11,7 @@ export interface StaffSession {
   companyId: string;
   companyName: string;
   canAdmin: boolean; // funcionalidades, preços, extras
+  plan: { isPro: boolean; maxVehicles: number | null; maxStudents: number | null };
 }
 
 /** Garante que o utilizador é gestor de uma empresa; senão redireciona. */
@@ -35,6 +36,9 @@ export async function requireManager(): Promise<StaffSession> {
 
   if (!company) redirect("/login?erro=sem-empresa");
 
+  const { data: limits } = await supabase.rpc("company_limits", { p_company_id: company.id }).single<{
+    max_vehicles: number | null; max_students: number | null; is_pro: boolean }>();
+
   return {
     userId: profile.id,
     fullName: profile.full_name,
@@ -42,5 +46,6 @@ export async function requireManager(): Promise<StaffSession> {
     companyId: company.id,
     companyName: company.name,
     canAdmin: profile.role === "company_admin" || profile.role === "platform_admin",
+    plan: { isPro: Boolean(limits?.is_pro), maxVehicles: limits?.max_vehicles ?? null, maxStudents: limits?.max_students ?? null },
   };
 }

@@ -1,6 +1,6 @@
 import type { Session } from "@supabase/supabase-js";
 import type { AppRole } from "@kandokids/shared";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "./supabase";
 
 export interface Profile {
@@ -17,6 +17,7 @@ interface AuthState {
   profile: Profile | null;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -35,22 +36,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => data.subscription.unsubscribe();
   }, []);
 
+  // Só a resposta do pedido mais recente conta (ex.: após aceitar um convite, o papel muda
+  // e um pedido anterior, mais lento, não pode repor o papel antigo).
+  const latestRequest = useRef(0);
+  async function loadProfile(userId: string) {
+    const request = ++latestRequest.current;
+    const { data } = await supabase.from("profiles").select("id, full_name, role, company_id, phone").eq("id", userId).single();
+    if (request !== latestRequest.current) return;
+    setProfile(data as Profile | null);
+    setLoading(false);
+  }
+
   useEffect(() => {
     if (!session) {
       setProfile(null);
       return;
     }
     setLoading(true);
-    supabase
-      .from("profiles")
-      .select("id, full_name, role, company_id, phone")
-      .eq("id", session.user.id)
-      .single()
-      .then(({ data }) => {
-        setProfile(data as Profile | null);
-        setLoading(false);
-      });
+    loadProfile(session.user.id);
   }, [session?.user.id]);
+
+  // Lê a sessão atual (e não a do render anterior): logo após o registo, `session` ainda pode estar vazio.
+  async function refreshProfile() {
+    const { data } = await supabase.auth.getSession();
+    if (data.session) await loadProfile(data.session.user.id);
+  }
 
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
@@ -62,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ loading, session, profile, signIn, signOut }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ loading, session, profile, signIn, signOut, refreshProfile }}>{children}</AuthContext.Provider>
   );
 }
 

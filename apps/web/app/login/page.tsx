@@ -28,6 +28,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <h2 className="text-2xl font-bold text-ink-900">Entrar no painel</h2>
           <p className="mb-6 mt-1 text-sm text-slate-500">Para administradores e operadores das empresas de transporte.</p>
           <LoginForm next={params.next ?? "/painel"} notice={params.erro ? NOTICES[params.erro] : undefined} />
+          <p className="mt-6 text-center text-sm text-slate-500">
+            É uma empresa de transporte escolar? <a href="/registar" className="font-semibold text-ink-800 underline">Registe-se grátis</a>
+          </p>
         </div>
       </section>
     </main>

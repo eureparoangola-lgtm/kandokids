@@ -333,5 +333,91 @@ do $$ begin
   perform public._ok('Ausência anulada: Kiame volta à lista');
 end $$;
 
+-- -----------------------------------------------------------------------------
+\echo '15. Nova empresa no plano gratuito: registo, limites, importação, convites, viagens'
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('00000000-0000-0000-0000-0000000000c1', 'dono@novaempresa.ao', '{"full_name":"Carlos Bento"}'),
+  ('00000000-0000-0000-0000-0000000000c2', 'assistente@novaempresa.ao', '{"full_name":"Lúcia Mendes"}'),
+  ('00000000-0000-0000-0000-0000000000c3', 'pai@exemplo.ao', '{"full_name":"Pedro Gomes"}');
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c1', false); set role authenticated;
+select public.register_company('Bento Transportes', '+244924000000') as nova \gset
+do $$ begin
+  assert public.my_role() = 'company_admin', 'Dono passa a administrador';
+  assert (select plan from public.companies where id = public.my_company_id()) = 'free';
+  assert (select count(*) from public.company_features where company_id = public.my_company_id()) = 19, 'Funcionalidades criadas';
+  perform public._expect_error($q$select public.register_company('Outra', '+244')$q$, '%já pertence a uma empresa%');
+  perform public._ok('Carlos registou a empresa no plano gratuito e é administrador');
+end $$;
+
+insert into public.vehicles (company_id, plate, nickname) values (:'nova', 'LD-11-22-EF', 'Hiace Verde');
+do $$ begin
+  perform public._expect_error($q$insert into public.vehicles (company_id, plate) values (public.my_company_id(), 'LD-99-99-ZZ')$q$, '%plano gratuito inclui 1 viatura%');
+  perform public._ok('Plano gratuito: 2.ª viatura recusada');
+end $$;
+
+insert into public.routes (company_id, name, direction, default_vehicle_id, weekdays)
+select :'nova', 'Manhã', 'to_school', id, '{1,2,3,4,5,6,7}' from public.vehicles where plate = 'LD-11-22-EF';
+
+select public.import_students(:'nova',
+  (select jsonb_agg(jsonb_build_object('full_name', 'Aluno ' || i, 'grade', '4ª', 'school_name', 'Escola Primária Nova',
+                                        'guardian_name', 'Pai ' || i, 'guardian_phone', '+244 931 000 ' || lpad(i::text, 3, '0')))
+   from generate_series(1, 15) i),
+  (select id from public.routes where company_id = :'nova')) as importados \gset
+do $$ begin
+  assert (select count(*) from public.students where company_id = public.my_company_id()) = 15;
+  assert (select count(*) from public.schools where company_id = public.my_company_id()) = 1, 'Escola criada uma vez';
+  assert (select count(*) from public.guardian_invites where company_id = public.my_company_id()) = 15;
+  assert (select count(*) from public.route_stops rs join public.routes r on r.id = rs.route_id where r.company_id = public.my_company_id()) = 15;
+  perform public._expect_error($q$select public.import_students(public.my_company_id(), '[{"full_name":"Aluno 16"}]')$q$, '%até 15 alunos%');
+  perform public._ok('Importados 15 alunos com convites; o 16.º é recusado (plano gratuito)');
+end $$;
+
+insert into public.staff_invites (company_id, role, full_name, phone, created_by)
+values (:'nova', 'assistant', 'Lúcia Mendes', '+244924000002', auth.uid());
+select code as codigo_equipa from public.staff_invites where company_id = :'nova' \gset
+select code as codigo_pai from public.guardian_invites where company_id = :'nova' and phone = '+244931000001' \gset
+reset role;
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c2', false); set role authenticated;
+select public.accept_invite(lower(:'codigo_equipa'));
+do $$ begin
+  assert public.my_role() = 'assistant';
+  perform public._ok('Lúcia aceitou o convite e é assistente da Bento Transportes');
+end $$;
+reset role;
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c3', false); set role authenticated;
+select public.accept_invite(:'codigo_pai');
+do $$ begin
+  assert public.my_role() = 'guardian';
+  assert (select count(*) from public.students) = 1, 'Pedro vê só o seu filho';
+  perform public._ok('Pedro aceitou o convite e vê o Aluno 1');
+end $$;
+reset role;
+
+-- Viagens geradas a partir da rota (sem duplicar)
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c1', false); set role authenticated;
+update public.routes set default_assistant_id = '00000000-0000-0000-0000-0000000000c2' where company_id = :'nova';
+do $$ declare n1 int; n2 int; begin
+  n1 := public.generate_trips(public.my_company_id());
+  n2 := public.generate_trips(public.my_company_id());
+  assert n1 = 1 and n2 = 0, format('esperava 1 e 0, obtido %s e %s', n1, n2);
+  assert (select count(*) from public.trip_students ts join public.trips t on t.id = ts.trip_id where t.company_id = public.my_company_id()) = 15;
+  perform public._expect_error($q$select public.generate_trips('11111111-1111-1111-1111-111111111111')$q$, '%Sem permissão%');
+  perform public._ok('Viagem de hoje gerada com 15 alunos; repetir não duplica; outra empresa não pode');
+end $$;
+reset role;
+
+-- A primeira recolha com GPS guarda a localização de casa
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c2', false); set role authenticated;
+select public.start_trip((select (x ->> 'trip_id')::uuid from jsonb_array_elements(public.get_crew_trips()) x limit 1));
+select public.record_pickup((select ts.id from public.trip_students ts join public.students s on s.id = ts.student_id where s.full_name = 'Aluno 1'), 'manual', -8.9, 13.2);
+reset role;
+do $$ begin
+  assert (select home_lat from public.students where full_name = 'Aluno 1') = -8.9;
+  perform public._ok('Casa do Aluno 1 guardada a partir do GPS da primeira recolha');
+end $$;
+
 \echo ''
 \echo 'Todos os testes passaram ✔'

@@ -110,3 +110,29 @@ test("parent requests a paid extra", async ({ browser }) => {
   await expect(parent.getByRole("alert")).toContainText("Pedido enviado");
   await expect(sms).toContainText("Aguarda pagamento");
 });
+
+test("new parent and new assistant sign up with invite codes", async ({ page, browser }) => {
+  const stamp = Date.now();
+
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Tenho um código de convite" })).toBeVisible();
+  await page.goto("/registo");
+  await page.getByLabel("Código de convite", { exact: true }).fill("demopais");
+  await page.getByLabel("Nome completo").fill("Maria Domingos");
+  await page.getByLabel("Email").fill(`maria+${stamp}@exemplo.ao`);
+  await page.getByLabel("Palavra-passe").fill("kandokids123");
+  await page.getByRole("button", { name: "Criar conta" }).click();
+  await expect(page).toHaveURL(/\/encarregado$/);
+  await expect(page.getByTestId("child-Kiame")).toBeVisible();
+
+  const ctx = await browser.newContext();
+  const staff = await ctx.newPage();
+  await staff.goto("/registo");
+  await staff.getByLabel("Código de convite", { exact: true }).fill("DEMOEQUI");
+  await staff.getByLabel("Nome completo").fill("Nova Assistente");
+  await staff.getByLabel("Email").fill(`assistente+${stamp}@kianda.ao`);
+  await staff.getByLabel("Palavra-passe").fill("kandokids123");
+  await staff.getByRole("button", { name: "Criar conta" }).click();
+  await expect(staff).toHaveURL(/\/assistente$/);
+  await expect(staff.getByText("As suas viagens de hoje.")).toBeVisible();
+});

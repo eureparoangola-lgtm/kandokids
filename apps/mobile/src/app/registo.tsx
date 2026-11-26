@@ -1,10 +1,12 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { Banner, Button, Field, Muted, Screen, Title } from "@/components/ui";
+import { useAuth } from "@/lib/auth";
 import { errorMessage, supabase } from "@/lib/supabase";
 
-/** Registo do encarregado com o código de convite enviado pela empresa de transporte. */
+/** Registo com o código de convite enviado pela empresa (encarregados e equipa). */
 export default function Register() {
+  const { refreshProfile } = useAuth();
   const [form, setForm] = useState({ name: "", phone: "+244 ", email: "", password: "", code: "" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -27,16 +29,18 @@ export default function Register() {
       setBusy(false);
       return setError("Conta criada. Confirme o seu email e depois entre com o código de convite.");
     }
-    const { error: inviteError } = await supabase.rpc("accept_guardian_invite", { p_code: form.code });
+    // O mesmo código serve para encarregados e para a equipa (assistentes, motoristas).
+    const { error: inviteError } = await supabase.rpc("accept_invite", { p_code: form.code });
     setBusy(false);
     if (inviteError) return setError(errorMessage(inviteError));
+    await refreshProfile();
     router.replace("/");
   }
 
   return (
     <Screen>
       <Title>Criar conta</Title>
-      <Muted>Use o código de convite que recebeu da empresa de transporte do seu filho.</Muted>
+      <Muted>Use o código de convite que recebeu da empresa de transporte (por WhatsApp ou SMS).</Muted>
       <Field label="Código de convite" value={form.code} onChangeText={(v) => set("code")(v.toUpperCase())} autoCapitalize="characters" />
       <Field label="Nome completo" value={form.name} onChangeText={set("name")} autoComplete="name" />
       <Field label="Telefone" value={form.phone} onChangeText={set("phone")} keyboardType="phone-pad" autoComplete="tel" />
