@@ -31,7 +31,7 @@ exception when others then
     raise exception 'FALHOU: erro diferente. Esperado "%", obtido "%"', p_pattern, sqlerrm;
   end if;
 end $$;
-grant execute on function public._expect_error(text, text) to authenticated;
+grant execute on function public._expect_error(text, text) to authenticated, anon;
 
 create function public._ts(p_trip uuid, p_student uuid) returns uuid
 language sql security definer as $$ select id from public.trip_students where trip_id = p_trip and student_id = p_student $$;
@@ -39,7 +39,7 @@ grant execute on function public._ts(uuid, uuid) to authenticated;
 
 create function public._ok(p_msg text) returns void language plpgsql as $$
 begin raise notice '  ✔ %', p_msg; end $$;
-grant execute on function public._ok(text) to authenticated;
+grant execute on function public._ok(text) to authenticated, anon;
 set client_min_messages = notice;
 
 -- -----------------------------------------------------------------------------
@@ -418,6 +418,23 @@ do $$ begin
   assert (select home_lat from public.students where full_name = 'Aluno 1') = -8.9;
   perform public._ok('Casa do Aluno 1 guardada a partir do GPS da primeira recolha');
 end $$;
+
+-- -----------------------------------------------------------------------------
+\echo '16. Visitantes anónimos não têm acesso'
+set role anon;
+do $$ begin
+  perform public._expect_error('select * from public.students', '%permission denied%');
+  perform public._expect_error('select public.get_guardian_dashboard()', '%permission denied%');
+  perform public._expect_error('select public.register_company(''x'', ''y'')', '%permission denied%');
+  perform public._ok('Sem sessão: nem tabelas nem funções');
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub', :'joana', false); set role authenticated;
+do $$ begin
+  perform public._expect_error($q$select public.notify_guardians('44444444-0000-0000-0000-000000000001', 'x', 'x', 'x')$q$, '%permission denied%');
+  perform public._ok('Funções internas (ex.: enviar notificações) não podem ser chamadas pelas apps');
+end $$;
+reset role;
 
 \echo ''
 \echo 'Todos os testes passaram ✔'
