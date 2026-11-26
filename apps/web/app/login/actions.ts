@@ -10,7 +10,13 @@ export async function signIn(_prev: { error?: string; email?: string } | undefin
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: "Email ou palavra-passe incorretos.", email };
+  if (error) {
+    // Distinguir credenciais erradas de um problema de configuração (ex.: chave do Supabase errada no Vercel).
+    if (error.status === 400 && /invalid.*credentials/i.test(error.message)) return { error: "Email ou palavra-passe incorretos.", email };
+    if (/email not confirmed/i.test(error.message)) return { error: "Confirme primeiro o seu email (veja a caixa de correio).", email };
+    console.error("Erro de autenticação:", error.status, error.message);
+    return { error: "Não foi possível entrar agora (erro do servidor). Tente novamente em alguns minutos.", email };
+  }
 
   // Registo feito com confirmação de email: a empresa é criada no primeiro login.
   const pending = data.user?.user_metadata?.pending_company as { name: string; phone: string; nif?: string } | undefined;
