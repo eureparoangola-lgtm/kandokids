@@ -48,9 +48,10 @@ echo "→ gateway :54321" >&2
 pkill -f scripts/test-stack/gateway.mjs 2>/dev/null || true
 nohup node scripts/test-stack/gateway.mjs > "$LOGS/gateway.log" 2>&1 &
 ANON=$(node scripts/test-stack/jwt.mjs anon "$SECRET")
-for i in $(seq 1 30); do
-  curl -sf "http://127.0.0.1:54321/rest/v1/features?limit=1" -H "apikey: $ANON" >/dev/null && break; sleep 1
-done
-curl -sf "http://127.0.0.1:54321/rest/v1/features?limit=1" -H "apikey: $ANON" >/dev/null || { docker logs kk-rest >&2; exit 1; }
+# Pronto quando a API responde (anónimos não têm acesso às tabelas, por isso basta haver resposta HTTP).
+api_up() { [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:54321/rest/v1/features?limit=1" -H "apikey: $ANON")" != "000" ] \
+  && [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:54321/rest/v1/features?limit=1" -H "apikey: $ANON")" != "502" ]; }
+for i in $(seq 1 30); do api_up && break; sleep 1; done
+api_up || { docker logs kk-rest >&2; exit 1; }
 echo "✔ stack ready" >&2
 echo "$ANON"

@@ -9,7 +9,8 @@ grant anon, authenticated, service_role to authenticator;
 create schema auth authorization supabase_auth_admin;
 create schema extensions;
 grant usage on schema public, extensions, auth to anon, authenticated, service_role;
-alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
-alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
-alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
+-- Como nos projetos Supabase recentes: sem acesso automático às tabelas (ver migração _grants).
+alter default privileges in schema public grant all on tables to service_role;
+alter default privileges in schema public grant all on sequences to service_role;
+alter default privileges in schema public grant execute on functions to service_role;
 alter role supabase_auth_admin set search_path = auth;
