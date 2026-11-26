@@ -9,7 +9,7 @@ create table auth.users (
   instance_id uuid, id uuid primary key default gen_random_uuid(),
   aud text, role text, email text, phone text, encrypted_password text,
   email_confirmed_at timestamptz, raw_app_meta_data jsonb default '{}',
-  raw_user_meta_data jsonb default '{}', created_at timestamptz, updated_at timestamptz,
+  raw_user_meta_data jsonb default '{}', created_at timestamptz, updated_at timestamptz, last_sign_in_at timestamptz,
   confirmation_token text, recovery_token text, email_change_token_new text, email_change text
 );
 create table auth.identities (

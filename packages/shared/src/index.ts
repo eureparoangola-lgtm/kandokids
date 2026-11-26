@@ -45,7 +45,7 @@ export interface Feature {
   allows_included: boolean;
   allows_addon: boolean;
   default_mode: FeatureMode;
-  suggested_price_kz: number | null;
+  addon_price_kz: number | null; // preço mensal do extra (cobrado pela Kandokids)
   sort_order: number;
 }
 

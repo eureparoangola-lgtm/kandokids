@@ -54,6 +54,9 @@ export default function GuardianHome() {
               />
             </View>
             <Text style={{ fontSize: 15, color: colors.text, marginTop: space.xs }}>{statusSentence(child, trip)}</Text>
+            {child.company_suspended && (
+              <Banner>O serviço da {child.company_name} na Kandokids está suspenso. Contacte a empresa de transporte.</Banner>
+            )}
             {trip?.can_track && <Text style={{ color: colors.green, fontWeight: "600" }}>● Ver no mapa em tempo real</Text>}
           </Card>
         );

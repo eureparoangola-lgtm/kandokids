@@ -32,6 +32,7 @@ export interface Child {
   company_id: string;
   company_name: string;
   company_phone: string | null;
+  company_suspended: boolean;
   has_pin: boolean;
   absent_today: boolean;
   absent_tomorrow: boolean;

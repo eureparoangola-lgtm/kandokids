@@ -109,6 +109,7 @@ test("parent requests a paid extra", async ({ browser }) => {
   await sms.getByRole("button", { name: "Quero este extra" }).click();
   await expect(parent.getByRole("alert")).toContainText("Pedido enviado");
   await expect(sms).toContainText("Aguarda pagamento");
+  await expect(parent.getByTestId("payment-instructions")).toContainText("Multicaixa Express");
 });
 
 test("new parent and new assistant sign up with invite codes", async ({ page, browser }) => {

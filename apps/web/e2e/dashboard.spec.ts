@@ -37,55 +37,37 @@ test("home shows today's trips", async ({ page }) => {
   await expect(page.getByText("0 a bordo · 1 criança", { exact: true })).toBeVisible();
 });
 
-test("admin switches features on/off and sets the paid-extra price", async ({ page }) => {
+test("company admin switches features on/off, and never sees the paid extras", async ({ page }) => {
   await loginAsAdmin(page);
   await page.getByRole("navigation").getByRole("link", { name: "Funcionalidades" }).click();
   await expect(page.getByRole("heading", { name: "Funcionalidades" })).toBeVisible();
 
-  // Pickup PIN: off by default → included
+  // Pickup PIN: off by default → on
   const pin = page.locator("article", { hasText: "PIN de entrega" });
   await expect(pin.getByRole("radio", { checked: true })).toHaveText("Desligado");
-  await pin.getByRole("radio", { name: "Incluído" }).click();
+  await pin.getByRole("radio", { name: "Ativo" }).click();
   await expect(pin.getByText("Guardado ✓")).toBeVisible();
-
-  // Live tracking cannot be sold as an extra
-  const tracking = page.locator("article", { hasText: "Localização em tempo real" });
-  await expect(tracking.getByRole("radio")).toHaveText(["Desligado", "Incluído"]);
-
-  // SMS is a paid extra: change its monthly price
-  const sms = page.locator("article", { hasText: "SMS na recolha e na chegada" });
-  await expect(sms.getByRole("radio", { checked: true })).toHaveText("Extra pago");
-  await sms.getByRole("spinbutton").fill("2000");
-  await sms.getByRole("button", { name: "Guardar preço" }).click();
-  await expect(sms.getByText("Guardado ✓")).toBeVisible();
-
-  // Persisted after reload
   await page.reload();
-  await expect(pin.getByRole("radio", { checked: true })).toHaveText("Incluído");
-  await expect(sms.getByRole("spinbutton")).toHaveValue("2000");
+  await expect(pin.getByRole("radio", { checked: true })).toHaveText("Ativo");
+
+  // Paid extras are sold by Kandokids: not shown to companies
+  await expect(page.getByText("SMS na recolha e na chegada")).toHaveCount(0);
+  await expect(page.getByText("Alertas de excesso de velocidade")).toHaveCount(0);
+  await expect(page.getByText("Extra pago")).toHaveCount(0);
+  await expect(page.getByRole("navigation").getByRole("link", { name: /Extras/ })).toHaveCount(0);
 
   // Turn the chat off and back on
   const chat = page.locator("article", { hasText: "Mensagens com a viatura" });
   await chat.getByRole("radio", { name: "Desligado" }).click();
   await expect(chat.getByText("Guardado ✓")).toBeVisible();
-  await chat.getByRole("radio", { name: "Incluído" }).click();
+  await chat.getByRole("radio", { name: "Ativo" }).click();
   await expect(chat.getByText("Guardado ✓")).toBeVisible();
 });
 
-test("admin confirms a parent's payment for a paid extra", async ({ page }) => {
+test("company admins cannot open the Kandokids platform", async ({ page }) => {
   await loginAsAdmin(page);
-  await page.getByRole("navigation").getByRole("link", { name: /Extras pagos/ }).click();
-  await expect(page.getByRole("heading", { name: "Extras pagos" })).toBeVisible();
-
-  const joana = page.locator("li", { hasText: "Joana Neto" });
-  await expect(joana).toContainText("SMS na recolha e na chegada");
-  await joana.getByLabel("Meses").selectOption("3");
-  await joana.getByLabel("Referência do pagamento").fill("MCX-554433");
-  await joana.getByRole("button", { name: "Confirmar pagamento" }).click();
-
-  const row = page.locator("tbody tr", { hasText: "Joana Neto" });
-  await expect(row).toContainText("Ativo");
-  await expect(row).toContainText(/4\s500\sKz/);
+  await page.goto("/plataforma");
+  await expect(page).toHaveURL(/\/painel$/);
 });
 
 test("dashboard fits a phone screen", async ({ page }) => {

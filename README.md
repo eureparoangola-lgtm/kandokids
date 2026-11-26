@@ -42,7 +42,9 @@ pnpm --filter @kandokids/mobile start                # QR code for Expo Go / dev
 
 ## Plans and onboarding
 
-- **Free plan, forever:** 1 vehicle and up to 15 students, all features, no ads. Paid extras for parents work on every plan.
+- **Free plan, forever:** 1 vehicle and up to 15 students, all features, no ads.
+- **Paid extras are sold by Kandokids directly to parents** (SMS, speeding alerts, …). Companies never see them.
+  One payment covers all of a parent's children, even in different companies.
 - **Pro plan:** unlimited vehicles and students (yearly licence or monthly fee). Companies request it from the dashboard (**Plano**), and Kandokids staff are notified.
 - **Self-service:** a company signs up at `/registar`, adds its vehicle, **imports students from Excel/CSV**
   (columns are recognized by name: Nome, Classe, Escola, Morada, Encarregado, Telefone, Parentesco), invites its
@@ -52,9 +54,26 @@ pnpm --filter @kandokids/mobile start                # QR code for Expo Go / dev
   or on demand from the dashboard.
 - A child's home location is saved automatically on the first pickup with GPS, which enables proximity alerts.
 
+## Kandokids master dashboard (`/plataforma`)
+
+For the Kandokids team (`platform_admin` role):
+
+- **Overview:** companies (free / Pro / suspended), parents (and how many were active in the last 7 days), staff, students, vehicles, trips today and live, active extras and monthly extras revenue, Pro plan requests.
+- **Companies:** usage per company, admin contact (WhatsApp link), change plan (free ↔ Pro with paid-until date), **suspend with a reason / reactivate**. Suspension locks the company dashboard (`/suspensa`), stops trips from starting or being generated, notifies the company admin, and shows parents a notice.
+- **Parents:** search by name, phone or email; children, companies, extras, last login.
+- **Extras:** confirm parents' payments (1/3/6/12 months), set the price and mode of each extra for all companies.
+- **Settings:** payment instructions and support contacts shown in the app.
+
+Making someone a Kandokids admin (Supabase → SQL Editor):
+
+```sql
+update public.profiles set role = 'platform_admin', company_id = null
+where id = (select id from auth.users where email = 'EMAIL-DA-CONTA');
+```
+
 ## Feature switches
 
-Every feature has a per-company mode, set in the dashboard under **Funcionalidades**:
+Companies switch the base features on or off under **Funcionalidades**. Paid extras are controlled by Kandokids (`/plataforma/extras`). Each feature has a mode:
 
 | Mode | Meaning |
 |---|---|

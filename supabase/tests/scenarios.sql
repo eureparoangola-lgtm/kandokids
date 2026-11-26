@@ -55,17 +55,21 @@ end $$;
 reset role;
 
 -- -----------------------------------------------------------------------------
-\echo '2. Painel: ativar/desativar funcionalidades'
+\echo '2. Painel da empresa: ativar/desativar funcionalidades (sem extras)'
 select set_config('request.jwt.claim.sub', :'admin', false); set role authenticated;
 update public.company_features set mode = 'included' where company_id = :'empresa' and feature_key = 'pickup_pin';
 do $$ begin
   assert public.company_has_feature('11111111-1111-1111-1111-111111111111', 'pickup_pin'), 'PIN devia estar ativo';
   perform public._ok('Admin ativou o PIN de entrega');
-  perform public._expect_error($q$update public.company_features set mode = 'addon', addon_price_kz = 500
+  perform public._expect_error($q$update public.company_features set mode = 'addon'
      where company_id = '11111111-1111-1111-1111-111111111111' and feature_key = 'live_tracking'$q$, '%não pode ser vendida como extra%');
   perform public._ok('Localização não pode ser vendida como extra (regra do catálogo)');
+  perform public._expect_error($q$update public.company_features set mode = 'off'
+     where company_id = '11111111-1111-1111-1111-111111111111' and feature_key = 'sms_alerts'$q$, '%geridos pela Kandokids%');
+  perform public._expect_error($q$update public.company_features set mode = 'addon'
+     where company_id = '11111111-1111-1111-1111-111111111111' and feature_key = 'proximity_alert'$q$, '%geridos pela Kandokids%');
+  perform public._ok('A empresa não pode mexer nos extras pagos pelos pais (são da Kandokids)');
 end $$;
-update public.company_features set addon_price_kz = 2000 where company_id = :'empresa' and feature_key = 'sms_alerts';
 reset role;
 
 select set_config('request.jwt.claim.sub', :'teresa', false); set role authenticated;
@@ -79,12 +83,12 @@ reset role;
 
 -- Bloqueio pela plataforma
 select set_config('request.jwt.claim.sub', :'plataforma', false); set role authenticated;
-update public.company_features set locked_by_platform = true where company_id = :'empresa' and feature_key = 'monthly_report';
+update public.company_features set locked_by_platform = true where company_id = :'empresa' and feature_key = 'trip_feedback';
 reset role;
 select set_config('request.jwt.claim.sub', :'admin', false); set role authenticated;
 do $$ begin
   perform public._expect_error($q$update public.company_features set mode = 'off'
-     where company_id = '11111111-1111-1111-1111-111111111111' and feature_key = 'monthly_report'$q$, '%gerida pela Kandokids%');
+     where company_id = '11111111-1111-1111-1111-111111111111' and feature_key = 'trip_feedback'$q$, '%gerida pela Kandokids%');
   perform public._ok('Funcionalidade bloqueada pela Kandokids não pode ser alterada pela empresa');
 end $$;
 reset role;
@@ -100,27 +104,47 @@ end $$;
 reset role;
 
 -- -----------------------------------------------------------------------------
-\echo '4. Extras pagos: SMS'
+\echo '4. Extras pagos à Kandokids: SMS'
+select set_config('request.jwt.claim.sub', :'plataforma', false); set role authenticated;
+update public.features set addon_price_kz = 2000 where key = 'sms_alerts';
+reset role;
 select set_config('request.jwt.claim.sub', :'joana', false); set role authenticated;
-select public.request_addon(:'empresa', 'sms_alerts');
+select public.request_addon('sms_alerts');
 do $$ begin
-  assert (select enabled from public.get_my_features('11111111-1111-1111-1111-111111111111') where feature_key = 'sms_alerts') = false;
-  assert (select addon_price_kz from public.get_my_features('11111111-1111-1111-1111-111111111111') where feature_key = 'sms_alerts') = 2000;
-  perform public._ok('Joana pediu SMS (2000 Kz, pendente)');
+  assert (select active from public.get_my_extras() where feature_key = 'sms_alerts') = false;
+  assert (select price_kz from public.get_my_extras() where feature_key = 'sms_alerts') = 2000;
+  assert (select status from public.get_my_extras() where feature_key = 'sms_alerts') = 'pending_payment';
+  assert exists (select 1 from public.platform_settings where key = 'payment_instructions'), 'Encarregado lê as instruções de pagamento';
+  perform public._ok('Joana pediu SMS à Kandokids (2000 Kz, pendente)');
 end $$;
 reset role;
+do $$ begin
+  assert exists (select 1 from public.notifications where type = 'addon_requested' and recipient_id = '00000000-0000-0000-0000-000000000001');
+  assert not exists (select 1 from public.notifications where type = 'addon_requested' and recipient_id = '00000000-0000-0000-0000-0000000000a1');
+  perform public._ok('O pedido vai para a Kandokids, não para a empresa');
+end $$;
+
 select set_config('request.jwt.claim.sub', :'admin', false); set role authenticated;
+do $$ begin
+  assert (select count(*) from public.guardian_addons) = 0, 'A empresa não vê os extras dos pais';
+  perform public._expect_error($q$select public.activate_addon((select id from public.guardian_addons limit 1))$q$, '%Sem permissão%');
+  perform public._ok('A empresa não vê nem ativa extras');
+end $$;
+reset role;
+
+select set_config('request.jwt.claim.sub', :'plataforma', false); set role authenticated;
 select public.activate_addon((select id from public.guardian_addons where feature_key = 'sms_alerts'), 3, 'MCX-998877');
 do $$ begin
   assert public.guardian_has_feature('00000000-0000-0000-0000-0000000000b1', '11111111-1111-1111-1111-111111111111', 'sms_alerts');
   assert not public.guardian_has_feature('00000000-0000-0000-0000-0000000000b2', '11111111-1111-1111-1111-111111111111', 'sms_alerts');
   assert (select amount_kz from public.guardian_addons where feature_key = 'sms_alerts') = 6000;
-  perform public._ok('Pagamento confirmado: SMS ativo 3 meses para a Joana (6000 Kz); Paulo não tem');
+  perform public._ok('Kandokids confirmou o pagamento: SMS ativo 3 meses para a Joana (6000 Kz); Paulo não tem');
 end $$;
 -- Paulo tem o extra de alertas de velocidade
-insert into public.guardian_addons (company_id, guardian_id, feature_key, status, starts_on, ends_on, amount_kz)
-values (:'empresa', :'paulo', 'speeding_alerts', 'active', current_date, current_date + 30, 1000);
+insert into public.guardian_addons (guardian_id, feature_key, status, starts_on, ends_on, amount_kz)
+values (:'paulo', 'speeding_alerts', 'active', current_date, current_date + 30, 1000);
 reset role;
+
 
 -- -----------------------------------------------------------------------------
 \echo '5. "Não vai hoje" + início da viagem'
@@ -433,6 +457,66 @@ select set_config('request.jwt.claim.sub', :'joana', false); set role authentica
 do $$ begin
   perform public._expect_error($q$select public.notify_guardians('44444444-0000-0000-0000-000000000001', 'x', 'x', 'x')$q$, '%permission denied%');
   perform public._ok('Funções internas (ex.: enviar notificações) não podem ser chamadas pelas apps');
+end $$;
+reset role;
+
+-- -----------------------------------------------------------------------------
+\echo '17. Painel da Kandokids: números, suspender/reativar empresas, planos'
+select set_config('request.jwt.claim.sub', :'admin', false); set role authenticated;
+do $$ begin
+  perform public._expect_error('select public.platform_overview()', '%Sem permissão%');
+  perform public._expect_error($q$select public.platform_set_company_status('11111111-1111-1111-1111-111111111111', true, 'x')$q$, '%Sem permissão%');
+  perform public._ok('Empresas não têm acesso ao painel da Kandokids');
+end $$;
+reset role;
+
+select set_config('request.jwt.claim.sub', :'plataforma', false); set role authenticated;
+do $$ declare o jsonb; c jsonb; begin
+  o := public.platform_overview();
+  assert (o ->> 'companies')::int = 2, 'Kianda + Bento';
+  assert (o ->> 'guardians')::int >= 3, 'Joana, Paulo, Pedro';
+  assert (o ->> 'addons_active')::int = 2, 'SMS da Joana + velocidade do Paulo';
+  assert (o ->> 'addons_monthly_kz')::numeric = 2000 + 1000, format('receita mensal %s', o ->> 'addons_monthly_kz');
+  select x into c from jsonb_array_elements(public.platform_companies()) x where x ->> 'name' = 'Bento Transportes';
+  assert (c ->> 'students')::int = 15 and (c ->> 'plan') = 'free' and c -> 'admin' ->> 'email' = 'dono@novaempresa.ao';
+  assert jsonb_array_length(public.platform_guardians('Joana')) = 1;
+  perform public._ok('Kandokids vê empresas, encarregados, extras ativos e receita mensal (3000 Kz)');
+  perform public._expect_error($q$select public.platform_set_company_status((select id from public.companies where name = 'Bento Transportes'), true)$q$, '%motivo%');
+end $$;
+select public.platform_set_company_status((select id from public.companies where name = 'Bento Transportes'), true, 'Teste de suspensão');
+reset role;
+
+-- Empresa suspensa: a assistente não consegue operar, não se geram viagens, os pais são avisados
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c2', false); set role authenticated;
+do $$ begin
+  perform public._expect_error($q$select public.record_pickup((select ts.id from public.trip_students ts join public.students s on s.id = ts.student_id where s.full_name = 'Aluno 2'))$q$, '%suspensa%');
+  perform public._ok('Empresa suspensa: assistente não consegue registar recolhas');
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c3', false); set role authenticated;
+do $$ begin
+  assert (public.get_guardian_dashboard() -> 0 ->> 'company_suspended')::boolean, 'Pai vê o aviso';
+  perform public._ok('O encarregado vê que o serviço está suspenso');
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub', '', false);  -- como o agendamento diário (sem utilizador)
+do $$ begin
+  assert exists (select 1 from public.notifications n join public.profiles p on p.id = n.recipient_id
+                 where n.type = 'company_suspended' and p.full_name = 'Carlos Bento');
+  assert public.generate_trips(null, public.luanda_today() + 1) = 3, 'Só as 3 rotas da Kianda — a rota da Bento (suspensa) não gera viagem';
+  assert not exists (select 1 from public.trips t join public.companies c on c.id = t.company_id where c.name = 'Bento Transportes' and t.service_date = public.luanda_today() + 1);
+  perform public._ok('O administrador foi avisado e não se geram viagens para a empresa suspensa');
+end $$;
+
+select set_config('request.jwt.claim.sub', :'plataforma', false); set role authenticated;
+select public.platform_set_company_status((select id from public.companies where name = 'Bento Transportes'), false);
+select public.platform_set_company_plan((select id from public.companies where name = 'Bento Transportes'), 'pro', public.luanda_today() + 365);
+reset role;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c1', false); set role authenticated;
+do $$ begin
+  assert (select is_pro from public.company_limits(public.my_company_id()));
+  insert into public.vehicles (company_id, plate) values (public.my_company_id(), 'LD-99-99-ZZ');
+  perform public._ok('Reativada e passada a Pro: já pode adicionar a 2.ª viatura');
 end $$;
 reset role;
 

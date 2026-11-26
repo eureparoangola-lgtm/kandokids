@@ -8,9 +8,7 @@ import { signOut } from "../login/actions";
 export default async function PainelLayout({ children }: { children: React.ReactNode }) {
   const session = await requireManager();
   const supabase = await createClient();
-  const [{ count }, { count: vehicles }, { count: students }] = await Promise.all([
-    supabase.from("guardian_addons").select("id", { count: "exact", head: true })
-      .eq("company_id", session.companyId).eq("status", "pending_payment"),
+  const [{ count: vehicles }, { count: students }] = await Promise.all([
     supabase.from("vehicles").select("id", { count: "exact", head: true }).eq("company_id", session.companyId).eq("active", true),
     supabase.from("students").select("id", { count: "exact", head: true }).eq("company_id", session.companyId).eq("active", true),
   ]);
@@ -22,7 +20,7 @@ export default async function PainelLayout({ children }: { children: React.React
           <Logo className="text-lg" />
           <p className="text-sm text-slate-300 lg:mt-4">{session.companyName}</p>
         </div>
-        <SidebarNav pendingAddons={count ?? 0} />
+        <SidebarNav />
         <div className="mt-auto hidden border-t border-white/10 pt-4 text-sm lg:block">
           <p className="font-medium">{session.fullName}</p>
           <p className="text-slate-400">{ROLE_LABELS[session.role]}</p>

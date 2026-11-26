@@ -1,5 +1,7 @@
 import { DIRECTION_LABELS, TRIP_STATUS_LABELS } from "@kandokids/shared";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import { Text, View } from "react-native";
 import { Badge, Banner, Button, Card, Loading, Muted, Screen, SectionLabel, Title } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
@@ -17,11 +19,18 @@ const STATUS_COLORS = {
 export default function CrewHome() {
   const { profile, signOut } = useAuth();
   const { data, error, loading } = useRpc<CrewTrip[]>("get_crew_trips", undefined, { pollSeconds: 30 });
+  const [suspended, setSuspended] = useState(false);
+  useFocusEffect(useCallback(() => {
+    if (!profile?.company_id) return;
+    supabase.from("companies").select("license_status").eq("id", profile.company_id).single()
+      .then(({ data: c }) => setSuspended(c?.license_status === "suspended"));
+  }, [profile?.company_id]));
 
   return (
     <Screen>
       <Title>Bom dia, {profile?.full_name.split(" ")[0]}</Title>
       <Muted>As suas viagens de hoje.</Muted>
+      {suspended && <Banner>A conta da empresa está suspensa pela Kandokids. Não é possível iniciar viagens. Fale com o administrador da empresa.</Banner>}
       {error && <Banner>{error}</Banner>}
       {loading && !data && <Loading />}
       {data?.length === 0 && <Card><Muted>Não tem viagens atribuídas hoje.</Muted></Card>}

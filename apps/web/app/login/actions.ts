@@ -28,7 +28,7 @@ export async function signIn(_prev: { error?: string; email?: string } | undefin
     await supabase.auth.updateUser({ data: { pending_company: null } });
   }
 
-  redirect(next.startsWith("/painel") ? next : "/painel");
+  redirect(next.startsWith("/painel") || next.startsWith("/plataforma") ? next : "/painel");
 }
 
 export async function signOut() {
