@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { ROLE_LABELS, staffInviteMessage, whatsappLink, type AppRole } from "@kandokids/shared";
 import { ActionForm, inputClass, labelClass, type ActionState } from "@/components/action-form";
+import { siteOrigin } from "@/lib/origin";
 import { requireManager } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -24,6 +25,7 @@ async function inviteStaff(_prev: ActionState, formData: FormData): Promise<Acti
 export default async function TeamPage() {
   const session = await requireManager();
   const supabase = await createClient();
+  const origin = await siteOrigin();
   const [{ data: staff }, { data: invites }] = await Promise.all([
     supabase.from("profiles").select("id, full_name, phone, role").eq("company_id", session.companyId).order("full_name"),
     supabase.from("staff_invites").select("id, full_name, phone, role, code, expires_at")
@@ -50,7 +52,7 @@ export default async function TeamPage() {
               <span><strong>{i.full_name}</strong> <span className="text-sm text-slate-500">· {ROLE_LABELS[i.role as AppRole]} · convite pendente · código <span className="font-mono">{i.code}</span></span></span>
               {i.phone && (
                 <a target="_blank" rel="noreferrer" className="rounded-lg bg-green-600 px-3 py-1 text-sm font-semibold text-white hover:bg-green-700"
-                  href={whatsappLink(i.phone, staffInviteMessage({ company: session.companyName, name: i.full_name, role: ROLE_LABELS[i.role as AppRole], code: i.code }))}>
+                  href={whatsappLink(i.phone, staffInviteMessage({ company: session.companyName, name: i.full_name, role: ROLE_LABELS[i.role as AppRole], code: i.code, origin }))}>
                   Enviar por WhatsApp
                 </a>
               )}

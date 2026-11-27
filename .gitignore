@@ -10,3 +10,5 @@ dist
 supabase/.temp
 test-results
 playwright-report
+apps/web/public/app
+apps/mobile/dist-app

@@ -142,13 +142,18 @@ export function whatsappLink(phone: string | null | undefined, text: string): st
   return `https://wa.me/${to}?text=${encodeURIComponent(text)}`;
 }
 
-export function guardianInviteMessage(opts: { company: string; student: string; code: string; guardianName?: string | null }): string {
-  const hello = opts.guardianName ? `Olá ${opts.guardianName.split(" ")[0]}!` : "Olá!";
-  return `${hello} A ${opts.company} usa a app Kandokids: vai poder ver em que viatura está ${opts.student}, acompanhar a viagem no mapa e falar com a viatura. Instale a app Kandokids, escolha "Tenho um código de convite" e use o código ${opts.code}.`;
+/** Link de registo com o código já preenchido (app web em <site>/app). */
+export function inviteLink(origin: string, code: string): string {
+  return `${origin.replace(/\/$/, "")}/app/registo?codigo=${encodeURIComponent(code)}`;
 }
 
-export function staffInviteMessage(opts: { company: string; name: string; role: string; code: string }): string {
-  return `Olá ${opts.name.split(" ")[0]}! Foi adicionado(a) como ${opts.role.toLowerCase()} da ${opts.company} na Kandokids. Instale a app Kandokids, escolha "Tenho um código de convite" e use o código ${opts.code}.`;
+export function guardianInviteMessage(opts: { company: string; student: string; code: string; origin: string; guardianName?: string | null }): string {
+  const hello = opts.guardianName ? `Olá ${opts.guardianName.split(" ")[0]}!` : "Olá!";
+  return `${hello} A ${opts.company} usa a Kandokids: vai poder ver em que viatura está ${opts.student}, acompanhar a viagem no mapa e falar com a viatura.\n\nCrie a sua conta aqui (o código já vem preenchido): ${inviteLink(opts.origin, opts.code)}\n\nCódigo de convite: ${opts.code}`;
+}
+
+export function staffInviteMessage(opts: { company: string; name: string; role: string; code: string; origin: string }): string {
+  return `Olá ${opts.name.split(" ")[0]}! Foi adicionado(a) como ${opts.role.toLowerCase()} da ${opts.company} na Kandokids.\n\nCrie a sua conta aqui (o código já vem preenchido): ${inviteLink(opts.origin, opts.code)}\n\nCódigo de convite: ${opts.code}`;
 }
 
 // ---------------------------------------------------------------------------

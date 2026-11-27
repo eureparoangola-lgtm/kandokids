@@ -1,6 +1,7 @@
 import { guardianInviteMessage, whatsappLink } from "@kandokids/shared";
 import { ActionForm, inputClass, labelClass } from "@/components/action-form";
 import { StudentImport } from "@/components/student-import";
+import { siteOrigin } from "@/lib/origin";
 import { requireManager } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { addStudent, newInvite } from "./actions";
@@ -26,6 +27,7 @@ export default async function StudentsPage() {
     supabase.from("routes").select("id, name").eq("company_id", session.companyId).eq("active", true).order("name"),
   ]);
   const now = new Date().toISOString();
+  const origin = await siteOrigin();
 
   return (
     <div className="space-y-8">
@@ -56,7 +58,7 @@ export default async function StudentsPage() {
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   {pending.map((inv) => (
                     <a key={inv.code} target="_blank" rel="noreferrer"
-                      href={whatsappLink(inv.phone, guardianInviteMessage({ company: session.companyName, student: s.full_name.split(" ")[0], code: inv.code }))}
+                      href={whatsappLink(inv.phone, guardianInviteMessage({ company: session.companyName, student: s.full_name.split(" ")[0], code: inv.code, origin }))}
                       className="rounded-lg bg-green-600 px-3 py-1 font-semibold text-white hover:bg-green-700" title={`Código ${inv.code} · ${inv.phone}`}>
                       Convidar {inv.phone} por WhatsApp
                     </a>

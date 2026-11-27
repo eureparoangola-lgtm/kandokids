@@ -117,8 +117,10 @@ test("new parent and new assistant sign up with invite codes", async ({ page, br
 
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Tenho um código de convite" })).toBeVisible();
-  await page.goto("/registo");
-  await page.getByLabel("Código de convite", { exact: true }).fill("demopais");
+  // Invite link from WhatsApp: the code comes pre-filled
+  await page.goto("/registo?codigo=demopais");
+  await expect(page.getByLabel("Código de convite", { exact: true })).toHaveValue("DEMOPAIS");
+  await expect(page.getByText(/já está preenchido/)).toBeVisible();
   await page.getByLabel("Nome completo").fill("Maria Domingos");
   await page.getByLabel("Email").fill(`maria+${stamp}@exemplo.ao`);
   await page.getByLabel("Palavra-passe").fill("kandokids123");

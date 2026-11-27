@@ -43,7 +43,7 @@ test("company signs up, imports students, invites staff and gets today's trip", 
   await page.getByRole("button", { name: "Importar 15 alunos" }).click();
   await expect(page.getByText("15 alunos importados.", { exact: false })).toBeVisible();
   const wa = page.getByRole("link", { name: "Enviar por WhatsApp" }).first();
-  await expect(wa).toHaveAttribute("href", /^https:\/\/wa\.me\/244931100001\?text=.*Bento%20Transportes.*c%C3%B3digo%20[0-9A-F]{8}/);
+  await expect(wa).toHaveAttribute("href", /^https:\/\/wa\.me\/244931100001\?text=.*Bento%20Transportes.*%2Fapp%2Fregisto%3Fcodigo%3D[0-9A-F]{8}/);
 
   // The 16th student is refused on the free plan
   await page.getByLabel("Nome do aluno *").fill("Aluno 16");

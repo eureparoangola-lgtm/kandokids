@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Banner, Button, Field, Muted, Screen, Title } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
@@ -7,7 +7,8 @@ import { errorMessage, supabase } from "@/lib/supabase";
 /** Registo com o código de convite enviado pela empresa (encarregados e equipa). */
 export default function Register() {
   const { refreshProfile } = useAuth();
-  const [form, setForm] = useState({ name: "", phone: "+244 ", email: "", password: "", code: "" });
+  const params = useLocalSearchParams<{ codigo?: string }>();
+  const [form, setForm] = useState({ name: "", phone: "+244 ", email: "", password: "", code: (params.codigo ?? "").toUpperCase() });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -40,7 +41,11 @@ export default function Register() {
   return (
     <Screen>
       <Title>Criar conta</Title>
-      <Muted>Use o código de convite que recebeu da empresa de transporte (por WhatsApp ou SMS).</Muted>
+      <Muted>
+        {params.codigo
+          ? "Bem-vindo(a)! O seu código de convite já está preenchido. Complete os seus dados para criar a conta."
+          : "Use o código de convite que recebeu da empresa de transporte (por WhatsApp ou SMS)."}
+      </Muted>
       <Field label="Código de convite" value={form.code} onChangeText={(v) => set("code")(v.toUpperCase())} autoCapitalize="characters" />
       <Field label="Nome completo" value={form.name} onChangeText={set("name")} autoComplete="name" />
       <Field label="Telefone" value={form.phone} onChangeText={set("phone")} keyboardType="phone-pad" autoComplete="tel" />

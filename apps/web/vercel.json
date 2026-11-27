@@ -1,0 +1,4 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "EXPO_BASE_URL=/app pnpm build:with-app"
+}

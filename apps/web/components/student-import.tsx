@@ -92,7 +92,7 @@ export function StudentImport({ companyName, routes }: { companyName: string; ro
                 <span><strong>{s.full_name}</strong>{s.guardian_name ? ` · ${s.guardian_name}` : ""}{s.invite_code ? <span className="ml-2 font-mono text-slate-500">{s.invite_code}</span> : null}</span>
                 {s.invite_code && s.guardian_phone ? (
                   <a target="_blank" rel="noreferrer" className="rounded-lg bg-green-600 px-3 py-1 font-semibold text-white hover:bg-green-700"
-                    href={whatsappLink(s.guardian_phone, guardianInviteMessage({ company: companyName, student: s.full_name.split(" ")[0], code: s.invite_code, guardianName: s.guardian_name }))}>
+                    href={whatsappLink(s.guardian_phone, guardianInviteMessage({ company: companyName, student: s.full_name.split(" ")[0], code: s.invite_code, guardianName: s.guardian_name, origin: window.location.origin }))}>
                     Enviar por WhatsApp
                   </a>
                 ) : <span className="text-slate-400">sem telefone</span>}
