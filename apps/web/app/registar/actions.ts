@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { siteOrigin } from "@/lib/origin";
 import { createClient } from "@/lib/supabase/server";
 
 export type RegisterState = { error?: string; checkEmail?: string; values?: Record<string, string> } | undefined;
@@ -16,7 +17,10 @@ export async function registerCompany(_prev: RegisterState, formData: FormData):
   const { data, error } = await supabase.auth.signUp({
     email: v.email,
     password,
-    options: { data: { full_name: v.name, phone: v.phone, pending_company: pending } },
+    options: {
+      data: { full_name: v.name, phone: v.phone, pending_company: pending },
+      emailRedirectTo: `${await siteOrigin()}/login?confirmado=1`,
+    },
   });
   if (error) {
     return { error: /registered|already/i.test(error.message) ? "Já existe uma conta com este email. Entre com ela." : error.message, values: v };

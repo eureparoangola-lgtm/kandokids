@@ -139,3 +139,15 @@ test("new parent and new assistant sign up with invite codes", async ({ page, br
   await expect(staff).toHaveURL(/\/assistente$/);
   await expect(staff.getByText("As suas viagens de hoje.")).toBeVisible();
 });
+
+test("after confirming the email, the first login links the child automatically", async ({ browser }) => {
+  // rosa@exemplo.ao signed up with code DEMOPEND and confirmed her email (see seed.sql)
+  const parent = await openAs(browser, "rosa@exemplo.ao");
+  await expect(parent).toHaveURL(/\/encarregado$/);
+  await expect(parent.getByTestId("child-Rita")).toBeVisible();
+});
+
+test("confirmation link lands on login with a success message", async ({ page }) => {
+  await page.goto("/login?confirmado=1");
+  await expect(page.getByText("Email confirmado!")).toBeVisible();
+});

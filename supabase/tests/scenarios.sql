@@ -503,8 +503,9 @@ select set_config('request.jwt.claim.sub', '', false);  -- como o agendamento di
 do $$ begin
   assert exists (select 1 from public.notifications n join public.profiles p on p.id = n.recipient_id
                  where n.type = 'company_suspended' and p.full_name = 'Carlos Bento');
-  assert public.generate_trips(null, public.luanda_today() + 1) = 3, 'Só as 3 rotas da Kianda — a rota da Bento (suspensa) não gera viagem';
-  assert not exists (select 1 from public.trips t join public.companies c on c.id = t.company_id where c.name = 'Bento Transportes' and t.service_date = public.luanda_today() + 1);
+  -- Próxima segunda-feira (as rotas da Kianda circulam de segunda a sexta), seja qual for o dia de hoje.
+  assert public.generate_trips(null, public.luanda_today() + (8 - extract(isodow from public.luanda_today())::int)) = 3, 'Só as 3 rotas da Kianda — a rota da Bento (suspensa) não gera viagem';
+  assert not exists (select 1 from public.trips t join public.companies c on c.id = t.company_id where c.name = 'Bento Transportes' and t.service_date = public.luanda_today() + (8 - extract(isodow from public.luanda_today())::int));
   perform public._ok('O administrador foi avisado e não se geram viagens para a empresa suspensa');
 end $$;
 

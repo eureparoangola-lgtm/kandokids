@@ -18,8 +18,13 @@ from (values
   ('00000000-0000-0000-0000-0000000000a3', 'manuel@kianda.ao',       'Manuel Kiala',       '+244923000003'),
   ('00000000-0000-0000-0000-0000000000a4', 'esperanca@kianda.ao',    'Esperança Lopes',    '+244923000004'),
   ('00000000-0000-0000-0000-0000000000b1', 'joana@exemplo.ao',       'Joana Neto',         '+244931000001'),
-  ('00000000-0000-0000-0000-0000000000b2', 'paulo@exemplo.ao',       'Paulo Domingos',     '+244931000002')
+  ('00000000-0000-0000-0000-0000000000b2', 'paulo@exemplo.ao',       'Paulo Domingos',     '+244931000002'),
+  ('00000000-0000-0000-0000-0000000000b3', 'rosa@exemplo.ao',        'Rosa Domingos',      '+244931000003')
 ) as u(id, email, name, phone);
+
+-- Rosa criou a conta com um código e confirmou o email: o convite fica pendente até ao primeiro login.
+update auth.users set raw_user_meta_data = raw_user_meta_data || '{"pending_invite":"DEMOPEND"}'
+where id = '00000000-0000-0000-0000-0000000000b3';
 
 insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
 select id, id, id::text, jsonb_build_object('sub', id::text, 'email', email), 'email', now(), now(), now()
@@ -90,6 +95,7 @@ join public.route_stops rs on rs.route_id = r.route_id::uuid;
 
 -- Convites de demonstração (códigos fixos para testar o registo na app)
 insert into public.guardian_invites (company_id, student_id, phone, relationship, code) values
-  ('11111111-1111-1111-1111-111111111111', '44444444-0000-0000-0000-000000000004', '+244931000009', 'Mãe', 'DEMOPAIS');
+  ('11111111-1111-1111-1111-111111111111', '44444444-0000-0000-0000-000000000004', '+244931000009', 'Mãe', 'DEMOPAIS'),
+  ('11111111-1111-1111-1111-111111111111', '44444444-0000-0000-0000-000000000003', '+244931000003', 'Mãe', 'DEMOPEND');
 insert into public.staff_invites (company_id, role, full_name, phone, code) values
   ('11111111-1111-1111-1111-111111111111', 'assistant', 'Nova Assistente', '+244923000009', 'DEMOEQUI');

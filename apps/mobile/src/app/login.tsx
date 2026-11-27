@@ -1,4 +1,4 @@
-import { Redirect, router } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Text, View } from "react-native";
 import { Banner, Button, Field, Screen } from "@/components/ui";
@@ -7,6 +7,7 @@ import { colors, space } from "@/lib/theme";
 
 export default function Login() {
   const { session, signIn } = useAuth();
+  const { confirmado } = useLocalSearchParams<{ confirmado?: string }>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +34,7 @@ export default function Login() {
         <Screen>
           <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" textContentType="emailAddress" />
           <Field label="Palavra-passe" value={password} onChangeText={setPassword} secureTextEntry autoComplete="password" onSubmitEditing={submit} />
+          {confirmado && !error && <Banner kind="success">Email confirmado! Entre com o seu email e palavra-passe.</Banner>}
           {error && <Banner>{error}</Banner>}
           <Button title="Entrar" onPress={submit} loading={busy} disabled={!email || !password} />
           <Button title="Tenho um código de convite" variant="ghost" onPress={() => router.push("/registo")} />

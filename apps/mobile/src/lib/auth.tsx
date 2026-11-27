@@ -41,6 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const latestRequest = useRef(0);
   async function loadProfile(userId: string) {
     const request = ++latestRequest.current;
+    // Convite pendente (conta criada com confirmação de email): aceitar agora, no primeiro login.
+    const { data: userData } = await supabase.auth.getUser();
+    const pending = userData.user?.user_metadata?.pending_invite as string | undefined;
+    if (pending) {
+      const { error } = await supabase.rpc("accept_invite", { p_code: pending });
+      if (error) console.warn("Convite pendente não aceite:", error.message);
+      await supabase.auth.updateUser({ data: { pending_invite: null } });
+    }
     const { data } = await supabase.from("profiles").select("id, full_name, role, company_id, phone").eq("id", userId).single();
     if (request !== latestRequest.current) return;
     setProfile(data as Profile | null);

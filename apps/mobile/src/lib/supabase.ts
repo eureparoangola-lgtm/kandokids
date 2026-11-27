@@ -11,7 +11,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     ...(Platform.OS !== "web" ? { storage: AsyncStorage } : {}),
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // No browser, o link de confirmação de email traz a sessão no endereço.
+    detectSessionInUrl: Platform.OS === "web",
   },
 });
 

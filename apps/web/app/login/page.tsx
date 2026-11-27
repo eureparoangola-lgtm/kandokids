@@ -2,6 +2,7 @@ import { Logo } from "@/components/logo";
 import { LoginForm } from "./login-form";
 
 const NOTICES: Record<string, string> = {
+  confirmado: "Email confirmado! Entre com o seu email e palavra-passe para abrir o painel.",
   "sem-acesso": "Esta conta não tem acesso ao painel de gestão. Encarregados e assistentes usam a app móvel.",
   "sem-empresa": "Esta conta ainda não está associada a uma empresa.",
 };
@@ -27,7 +28,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <Logo className="mb-8 text-xl text-ink-900 lg:hidden" />
           <h2 className="text-2xl font-bold text-ink-900">Entrar no painel</h2>
           <p className="mb-6 mt-1 text-sm text-slate-500">Para administradores e operadores das empresas de transporte.</p>
-          <LoginForm next={params.next ?? "/painel"} notice={params.erro ? NOTICES[params.erro] : undefined} />
+          <LoginForm next={params.next ?? "/painel"} notice={params.erro ? NOTICES[params.erro] : undefined} success={params.confirmado ? NOTICES.confirmado : undefined} />
           <p className="mt-6 text-center text-sm text-slate-500">
             É uma empresa de transporte escolar? <a href="/registar" className="font-semibold text-ink-800 underline">Registe-se grátis</a>
           </p>
