@@ -106,6 +106,16 @@ history, family sharing (up to 5 guardians) and a monthly report.
 Notifications go into `notifications` (push) and `sms_outbox` (SMS). Sending them through an
 Angolan SMS provider and FCM will be done by Edge Functions (next step).
 
+## Production on Hetzner
+
+The website (dashboard + app at `/app`) runs on a Hetzner server with Docker; the database and logins stay on Supabase.
+
+- `deploy/web.Dockerfile`: builds both into one Node server (no settings needed; Supabase public values are built in).
+- `deploy/docker-compose.yml`: the website plus **Caddy**, which gets and renews the HTTPS certificate automatically.
+- `deploy/setup-server.sh`: one-time setup of a fresh Ubuntu 24.04 server (swap, Docker, firewall, `deploy` user, first start).
+- `deploy/update.sh`: pulls the latest `main` and restarts. GitHub Actions runs it after **all tests pass** when the
+  `HETZNER_HOST` and `HETZNER_SSH_KEY` secrets are set; the CI also builds and starts the image on every push.
+
 ## Running locally
 
 ```bash

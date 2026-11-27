@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+**/dist
+**/dist-app
+**/.expo
+apps/web/public/app
+**/.env
+**/.env*.local
+**/test-results
+**/playwright-report
+.git
+supabase/.temp

@@ -1,0 +1,25 @@
+# Kandokids on a Hetzner server. Run from /opt/kandokids:  docker compose -f deploy/docker-compose.yml up -d --build
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    image: kandokids-web:latest
+    restart: unless-stopped
+    expose: ["3000"]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [web]
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in deploy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

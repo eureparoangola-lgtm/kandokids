@@ -73,6 +73,43 @@ jobs:
           EXPO_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           EXPO_PUBLIC_SUPABASE_ANON_KEY: build-placeholder
 
+  docker:
+    name: Server image (Docker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the Hetzner image
+        run: docker build -f deploy/web.Dockerfile -t kandokids-web .
+      - name: Start it and check the pages
+        run: |
+          docker run -d --name web -p 3000:3000 kandokids-web
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://localhost:3000/login && break; sleep 2; done
+          for p in /login /registar "/app/registo?codigo=TESTE"; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:3000$p"); echo "$p → $code"; [ "$code" = 200 ] || exit 1
+          done
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/painel); echo "/painel → $code"; [ "$code" = 307 ] || exit 1
+      - name: Server logs
+        if: failure()
+        run: docker logs web
+
+  deploy:
+    name: Deploy to Hetzner
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [database, web, mobile, e2e, docker]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency: deploy-production
+    steps:
+      - name: Update the server
+        env:
+          HOST: ${{ secrets.HETZNER_HOST }}
+          KEY: ${{ secrets.HETZNER_SSH_KEY }}
+        run: |
+          if [ -z "$HOST" ]; then echo "HETZNER_HOST is not set: skipping deploy."; exit 0; fi
+          mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          ssh -o StrictHostKeyChecking=accept-new "deploy@$HOST" 'bash /opt/kandokids/deploy/update.sh'
+
   e2e:
     name: End-to-end (dashboard and app in a real browser)
     runs-on: ubuntu-latest
