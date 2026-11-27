@@ -2,6 +2,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Text, View } from "react-native";
 import { Card, Loading, Muted, Screen } from "@/components/ui";
+import { useAuth } from "@/lib/auth";
 import { hhmm } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
@@ -16,11 +17,20 @@ interface Conv {
 
 /** Conversas das viaturas onde o assistente trabalha hoje. */
 export default function CrewMessages() {
+  const { profile } = useAuth();
   const [items, setItems] = useState<Conv[] | null>(null);
 
   const load = useCallback(async () => {
-    const { data: trips } = await supabase.rpc("get_crew_trips");
-    const vehicleIds = [...new Set(((trips as CrewTrip[]) ?? []).map((t) => t.vehicle.id))];
+    // Viaturas de hoje + viaturas das rotas onde sou assistente/motorista (para mensagens fora do dia da viagem).
+    const [{ data: trips }, { data: routes }] = await Promise.all([
+      supabase.rpc("get_crew_trips"),
+      supabase.from("routes").select("default_vehicle_id").eq("active", true)
+        .or(`default_assistant_id.eq.${profile?.id},default_driver_id.eq.${profile?.id}`),
+    ]);
+    const vehicleIds = [...new Set([
+      ...((trips as CrewTrip[]) ?? []).map((t) => t.vehicle.id),
+      ...((routes ?? []) as { default_vehicle_id: string | null }[]).map((r) => r.default_vehicle_id).filter((v): v is string => !!v),
+    ])];
     if (vehicleIds.length === 0) return setItems([]);
     const { data } = await supabase
       .from("conversations")
@@ -29,7 +39,7 @@ export default function CrewMessages() {
       .order("created_at", { referencedTable: "messages", ascending: false })
       .limit(1, { referencedTable: "messages" });
     setItems(((data as unknown as Conv[]) ?? []).sort((a, b) => (b.messages[0]?.created_at ?? "").localeCompare(a.messages[0]?.created_at ?? "")));
-  }, []);
+  }, [profile?.id]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 

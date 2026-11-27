@@ -1,8 +1,8 @@
 import { DIRECTION_LABELS, TRIP_STATUS_LABELS } from "@kandokids/shared";
-import { router, useFocusEffect } from "expo-router";
+import { Stack, router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Badge, Banner, Button, Card, Loading, Muted, Screen, SectionLabel, Title } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { colors, space } from "@/lib/theme";
@@ -28,6 +28,15 @@ export default function CrewHome() {
 
   return (
     <Screen>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable accessibilityLabel="Notificações" onPress={() => router.push("/encarregado/notificacoes")} style={{ paddingHorizontal: 8 }}>
+              <Text style={{ fontSize: 20 }}>🔔</Text>
+            </Pressable>
+          ),
+        }}
+      />
       <Title>Bom dia, {profile?.full_name.split(" ")[0]}</Title>
       <Muted>As suas viagens de hoje.</Muted>
       {suspended && <Banner>A conta da empresa está suspensa pela Kandokids. Não é possível iniciar viagens. Fale com o administrador da empresa.</Banner>}

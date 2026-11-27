@@ -48,7 +48,8 @@ export default function ChildDetail() {
     const { data, error: err } = await supabase.rpc("open_vehicle_conversation", { p_student_id: id });
     setBusy(null);
     if (err) return setError(errorMessage(err));
-    router.push({ pathname: "/conversa/[id]", params: { id: data as string, title: trip?.vehicle.nickname ?? trip?.vehicle.plate ?? "Viatura" } });
+    const v = child?.chat_vehicle;
+    router.push({ pathname: "/conversa/[id]", params: { id: data as string, title: v?.nickname ?? v?.plate ?? "Viatura" } });
   }
 
   const pos = live.data?.position;
@@ -100,8 +101,9 @@ export default function ChildDetail() {
       {child.trips.map((t) => <TripTimeline key={t.trip_id} trip={t} firstName={child.first_name} />)}
 
       <SectionLabel>Contactar</SectionLabel>
-      {child.features.vehicle_chat && trip && (
-        <Button title="Enviar mensagem à viatura" icon="💬" onPress={openChat} loading={busy === "chat"} />
+      {child.features.vehicle_chat && child.chat_vehicle && (
+        <Button title={`Enviar mensagem à viatura (${child.chat_vehicle.nickname ?? child.chat_vehicle.plate})`} icon="💬"
+          onPress={openChat} loading={busy === "chat"} />
       )}
       {trip?.assistant?.phone && (
         <Button title={`Ligar a ${trip.assistant.full_name.split(" ")[0]} (assistente)`} icon="📞" variant="secondary"

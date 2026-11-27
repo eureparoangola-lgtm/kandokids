@@ -95,7 +95,10 @@ test("morning trip: assistant and parent", async ({ browser }) => {
   await expect(parent.getByText("Ana chegou à escola").first()).toBeVisible();
   await expect(parent.getByText("A viatura está a chegar").first()).toBeVisible();
 
-  // --- Assistant reads the parent's message
+  // --- Assistant is notified of the message and reads it
+  await crew.goto("/encarregado/notificacoes");
+  await expect(crew.getByText(/Joana Neto: A Ana leva a mochila azul hoje\./)).toBeVisible();
+  await expect(crew.getByText(/Miguel não vai hoje/)).toBeVisible();
   await crew.goto("/assistente/mensagens");
   await expect(crew.getByText("A Ana leva a mochila azul hoje.")).toBeVisible();
 });

@@ -33,6 +33,8 @@ export interface Child {
   company_name: string;
   company_phone: string | null;
   company_suspended: boolean;
+  /** Viatura para mensagens: a da viagem de hoje ou a da rota (existe mesmo sem viagem). */
+  chat_vehicle: Vehicle | null;
   has_pin: boolean;
   absent_today: boolean;
   absent_tomorrow: boolean;

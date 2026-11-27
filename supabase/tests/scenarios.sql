@@ -347,6 +347,8 @@ reset role;
 do $$ begin
   assert (select status from public.trip_students where id = public._ts('66666666-0000-0000-0000-000000000002', '44444444-0000-0000-0000-000000000004')) = 'absent';
   assert exists (select 1 from public.notifications where recipient_id = '00000000-0000-0000-0000-0000000000a4' and type = 'student_absent');
+  assert (select count(*) from public.notifications where type = 'student_absent' and body like 'Miguel%'
+          and recipient_id = '00000000-0000-0000-0000-0000000000a2') = 1, 'Teresa (ida e regresso) recebe uma só notificação';
   perform public._ok('Ausência tardia: Kiame saiu da lista e a assistente foi avisada');
 end $$;
 select set_config('request.jwt.claim.sub', :'paulo', false); set role authenticated;
@@ -520,6 +522,40 @@ do $$ begin
   perform public._ok('Reativada e passada a Pro: já pode adicionar a 2.ª viatura');
 end $$;
 reset role;
+
+-- -----------------------------------------------------------------------------
+\echo '18. Mensagens fora do dia da viagem + notificações'
+update public.company_features set mode = 'included'  -- reativar (a secção 13 desligou)
+where company_id = '11111111-1111-1111-1111-111111111111' and feature_key = 'vehicle_chat';
+-- Domingo à noite: sem viagens para amanhã ainda; a Rita (Paulo) está na rota da manhã do Autocarro Azul.
+delete from public.trips where service_date = public.luanda_today()
+  and company_id = '11111111-1111-1111-1111-111111111111';
+select set_config('request.jwt.claim.sub', :'paulo', false); set role authenticated;
+do $$ declare d jsonb; conv uuid; begin
+  select x into d from jsonb_array_elements(public.get_guardian_dashboard()) x where x ->> 'first_name' = 'Rita';
+  assert jsonb_array_length(d -> 'trips') = 0, 'Sem viagens hoje';
+  assert d -> 'chat_vehicle' ->> 'plate' = 'LD-23-45-AB', 'Viatura da rota';
+  conv := public.open_vehicle_conversation('44444444-0000-0000-0000-000000000003');
+  insert into public.messages (conversation_id, sender_id, body) values (conv, auth.uid(), 'Amanhã a Rita não vai, está doente.');
+  perform public._ok('Sem viagem hoje, o Paulo continua a poder escrever à viatura da rota');
+end $$;
+reset role;
+do $$ begin
+  assert exists (select 1 from public.notifications where recipient_id = '00000000-0000-0000-0000-0000000000a2'
+                 and type = 'message' and body like 'Paulo Domingos: Amanhã a Rita não vai%');
+  assert exists (select 1 from public.notifications where recipient_id = '00000000-0000-0000-0000-0000000000a3' and type = 'message');
+  assert not exists (select 1 from public.notifications where recipient_id = '00000000-0000-0000-0000-0000000000b2' and type = 'message');
+  perform public._ok('A assistente e o motorista da rota foram notificados; o remetente não');
+end $$;
+select set_config('request.jwt.claim.sub', :'teresa', false); set role authenticated;
+insert into public.messages (conversation_id, sender_id, body)
+select id, auth.uid(), 'Obrigada, fica registado.' from public.conversations where student_id = '44444444-0000-0000-0000-000000000003';
+reset role;
+do $$ begin
+  assert exists (select 1 from public.notifications where recipient_id = '00000000-0000-0000-0000-0000000000b2'
+                 and type = 'message' and title = 'Mensagem da viatura');
+  perform public._ok('A resposta da assistente notifica o Paulo');
+end $$;
 
 \echo ''
 \echo 'Todos os testes passaram ✔'
